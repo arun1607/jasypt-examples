@@ -16,7 +16,9 @@ apply plugin: 'io.spring.dependency-management'
 group  = 'com.app.learning'
 version =  '0.0.1'
 
-
+    springBoot {
+        mainClass = "com.app.learning.Application"
+    }
 repositories {
     mavenCentral()
 }
