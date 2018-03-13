@@ -16,7 +16,6 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.core.annotation.Order;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -33,8 +32,7 @@ public class Application {
     }
 
     @Bean
-    @Order(1)
-    public CommandLineRunner commandLineRunner(ApplicationContext ctx) {
+    public CommandLineRunner encryptor(ApplicationContext ctx) {
         return args -> {
 
             String userHome = System.getProperty("user.home");
@@ -56,26 +54,6 @@ public class Application {
                 config.addProperty("adminPassword", PropertyValueEncryptionUtils.encrypt("admin@123", stringEncryptor));
                 builder.save();
             }
-        };
-    }
-
-    @Bean
-    @Order(10)
-    public CommandLineRunner decryptor(ApplicationContext ctx) {
-        return args -> {
-            String userHome = System.getProperty("user.home");
-
-            File propertyFile = new File(userHome, "sample.properties");
-            Parameters params = new Parameters();
-            FileBasedConfigurationBuilder<FileBasedConfiguration> builder =
-                    new FileBasedConfigurationBuilder<FileBasedConfiguration>(PropertiesConfiguration.class)
-                            .configure(params.properties()
-                                    .setFile(propertyFile));
-
-            Configuration config = builder.getConfiguration();
-            String adminPassword = config.getString("adminPassword");
-            StringEncryptor stringEncryptor = ctx.getBean("jasyptStringEncryptor", StringEncryptor.class);
-            System.out.println(PropertyValueEncryptionUtils.decrypt(adminPassword, stringEncryptor));
         };
     }
 
