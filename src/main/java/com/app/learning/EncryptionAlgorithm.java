@@ -23,11 +23,6 @@ public enum EncryptionAlgorithm {
     },
 
 
-    JDK8_UNLIMITED_POLICY("PBEWithHmacSHA512AndAES_256") {
-        Provider getProvider() {
-            return null;
-        }
-    },
 
     /**
      * Algorithm used in encryption/decryption on if unlimited jurisdiction policy jars are installed.
