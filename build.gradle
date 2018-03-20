@@ -24,6 +24,8 @@ targetCompatibility = 1.7
 
 dependencies {
     compile group: 'org.bouncycastle', name: 'bcprov-jdk15on', version: '1.59'
+    compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.7'
+
 }
 
 
