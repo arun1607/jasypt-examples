@@ -22,8 +22,8 @@ public class EncryptionHelper {
     private final File sourceFile;
     private final File targetFile;
     private final File applicationFile;
-    private final String password = "javapapers";
-    private final String salt = "3ncrypyt10n";
+    private final String password = "01e85f4b1851974e63af167da603b70931305d26f4c08eb57b8b96f9499fa4d0";
+    private final String salt = "0a37db69cb4511e4d5a1fbf0b9f590c1b75b8ac54fb1df85cae26b524360b59c";
     private Cipher encryptCipher;
     private Cipher decryptCipher;
     private PBEParameterSpec pbeParameterSpec;
