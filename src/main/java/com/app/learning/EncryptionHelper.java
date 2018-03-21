@@ -31,7 +31,6 @@ public class EncryptionHelper {
     private byte[] saltBytes;
     private String charset = Charset.defaultCharset().displayName();
     private Properties properties;
-    private String encryptionAlgoName;
     private PBEKeySpec pbeKeySpec;
 
     public EncryptionHelper(final Properties properties) {
@@ -94,11 +93,11 @@ public class EncryptionHelper {
                 FileOutputStream outFile = new FileOutputStream(targetFile);
         ) {
 
-            logger.log(Level.INFO, String.format("Using %s algorithm for encryption", encryptionAlgoName));
             EncryptionAlgorithm encryptionAlgorithm = getAlgoName();
 
             final String algorithmName = encryptionAlgorithm.getAlgorithmName();
             final Provider provider = encryptionAlgorithm.getProvider();
+            logger.log(Level.INFO, String.format("Using %s algorithm for encryption", algorithmName));
 
             SecretKeyFactory secretKeyFactory;
 
@@ -142,14 +141,15 @@ public class EncryptionHelper {
 
     public void performDecryption() {
         for (EncryptionAlgorithm encryptionAlgorithm : EncryptionAlgorithm.values()) {
+            final String algorithmName = encryptionAlgorithm.getAlgorithmName();
+            final Provider provider = encryptionAlgorithm.getProvider();
             try (FileInputStream fis = new FileInputStream(targetFile);
                  FileOutputStream fos = new FileOutputStream(decryptedFile)) {
 
                 byte[] salt = new byte[saltBytes.length];
                 fis.read(salt);
 
-                final String algorithmName = encryptionAlgorithm.getAlgorithmName();
-                final Provider provider = encryptionAlgorithm.getProvider();
+
 
                 SecretKeyFactory secretKeyFactory;
 
@@ -166,7 +166,7 @@ public class EncryptionHelper {
                     cipher = Cipher.getInstance(algorithmName);
                 }
 
-                logger.log(Level.INFO, String.format("Using %s algorithm for decryption", algorithmName));
+                logger.log(Level.INFO, String.format("Trying %s algorithm for decryption", algorithmName));
 
                 final SecretKey secretKey = secretKeyFactory.generateSecret(pbeKeySpec);
 
@@ -184,10 +184,11 @@ public class EncryptionHelper {
                 if (output != null)
                     fos.write(output);
                 fos.flush();
+                logger.log(Level.INFO, String.format("Decryption succeeded with %s algorithm ", algorithmName));
                 performCleanup();
                 break;
             } catch (InvalidKeyException | InvalidKeySpecException | BadPaddingException | InvalidAlgorithmParameterException | IllegalBlockSizeException | IOException | NoSuchPaddingException | NoSuchAlgorithmException e) {
-                logger.log(Level.SEVERE, "Error occurred", e);
+                logger.log(Level.SEVERE, String.format("Decryption failed with %s algorithm ", algorithmName), e);
             }
         }
     }
