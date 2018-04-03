@@ -1,21 +1,18 @@
 package com.app.learning;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jasypt.encryption.StringEncryptor;
+import org.jasypt.encryption.pbe.PooledPBEStringEncryptor;
+import org.jasypt.encryption.pbe.config.EnvironmentStringPBEConfig;
+import org.jasypt.exceptions.EncryptionInitializationException;
+import org.jasypt.exceptions.EncryptionOperationNotPossibleException;
+import org.jasypt.properties.PropertyValueEncryptionUtils;
+import org.jasypt.salt.StringFixedSaltGenerator;
 
-import javax.crypto.*;
-import javax.crypto.spec.PBEKeySpec;
-import javax.crypto.spec.PBEParameterSpec;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.charset.Charset;
+import javax.crypto.Cipher;
+import java.io.*;
 import java.nio.file.Files;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.security.Provider;
-import java.security.spec.InvalidKeySpecException;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -27,11 +24,9 @@ public class EncryptionHelper {
     private File sourceFile;
     private File targetFile;
     private File decryptedFile;
-    private PBEParameterSpec pbeParameterSpec;
-    private byte[] saltBytes;
-    private String charset = Charset.defaultCharset().displayName();
     private Properties properties;
-    private PBEKeySpec pbeKeySpec;
+    private String password;
+    private String salt;
 
     public EncryptionHelper(final Properties properties) {
         this.properties = properties;
@@ -62,134 +57,85 @@ public class EncryptionHelper {
                 Files.createFile(decryptedFile.toPath());
             }
 
-            final String salt = properties.getProperty("encryption.salt");
+
+            salt = properties.getProperty("encryption.salt");
 
             if (StringUtils.isBlank(salt)) {
                 throw new IllegalArgumentException("Salt value can nto be empty");
             }
+            final StringFixedSaltGenerator saltGenerator = new StringFixedSaltGenerator(salt);
 
-            final String password = properties.getProperty("encryption.password");
+            password = properties.getProperty("encryption.password");
 
             if (StringUtils.isBlank(password)) {
                 throw new IllegalArgumentException("password value can nto be empty");
             }
 
-
-            saltBytes = salt.getBytes(charset);
-
-            pbeParameterSpec = new PBEParameterSpec(saltBytes, 100);
-
-            pbeKeySpec = new PBEKeySpec(password.toCharArray());
-
         } catch (IOException e) {
-            throw new EncryptionException(e);
+            throw new EncryptionException("Problem occurred in initialization", e);
         }
 
     }
 
     public void performEncryption() throws EncryptionException {
         try (
-                FileInputStream inFile = new FileInputStream(sourceFile);
-                FileOutputStream outFile = new FileOutputStream(targetFile);
+                BufferedReader bufferedReader = new BufferedReader(new FileReader(sourceFile));
+                BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(targetFile))
         ) {
 
             EncryptionAlgorithm encryptionAlgorithm = getAlgoName();
 
             final String algorithmName = encryptionAlgorithm.getAlgorithmName();
-            final Provider provider = encryptionAlgorithm.getProvider();
+
             logger.log(Level.INFO, String.format("Using %s algorithm for encryption", algorithmName));
 
-            SecretKeyFactory secretKeyFactory;
-
-            if (provider != null) {
-                secretKeyFactory = SecretKeyFactory.getInstance(algorithmName, provider);
-            } else {
-                secretKeyFactory = SecretKeyFactory.getInstance(algorithmName);
+            StringEncryptor encryptor = getEncryptor(encryptionAlgorithm);
+            String textoEncrypt = bufferedReader.readLine();
+            String encryptedText = null;
+            if (!PropertyValueEncryptionUtils.isEncryptedValue(textoEncrypt)) {
+                encryptedText = PropertyValueEncryptionUtils.encrypt(textoEncrypt, encryptor);
             }
-            Cipher cipher;
-
-            if (provider != null) {
-                cipher = Cipher.getInstance(algorithmName, provider);
-            } else {
-                cipher = Cipher.getInstance(algorithmName);
+            if (StringUtils.isNotBlank(encryptedText)) {
+                bufferedWriter.write(encryptedText);
+                bufferedWriter.flush();
             }
-            final SecretKey secretKey = secretKeyFactory.generateSecret(pbeKeySpec);
-
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey, pbeParameterSpec);
-
-            outFile.write(saltBytes);
-
-            byte[] input = new byte[64];
-            int bytesRead;
-            while ((bytesRead = inFile.read(input)) != -1) {
-                byte[] output = cipher.update(input, 0, bytesRead);
-                if (output != null)
-                    outFile.write(output);
-            }
-
-            byte[] output = cipher.doFinal();
-            if (output != null)
-                outFile.write(output);
-
-            outFile.flush();
-
-        } catch (BadPaddingException | InvalidAlgorithmParameterException | InvalidKeyException | IOException | IllegalBlockSizeException | NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeySpecException e) {
+        } catch (IOException e) {
             throw new EncryptionException("Error occurred in encryption", e);
         }
 
     }
 
-    public void performDecryption() {
-        for (EncryptionAlgorithm encryptionAlgorithm : EncryptionAlgorithm.values()) {
-            final String algorithmName = encryptionAlgorithm.getAlgorithmName();
-            final Provider provider = encryptionAlgorithm.getProvider();
-            try (FileInputStream fis = new FileInputStream(targetFile);
-                 FileOutputStream fos = new FileOutputStream(decryptedFile)) {
+    public void performDecryption() throws EncryptionException {
 
-                byte[] salt = new byte[saltBytes.length];
-                fis.read(salt);
+        try (
+                BufferedReader bufferedReader = new BufferedReader(new FileReader(targetFile));
+                BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(decryptedFile))
+        ) {
 
 
-
-                SecretKeyFactory secretKeyFactory;
-
-                if (provider != null) {
-                    secretKeyFactory = SecretKeyFactory.getInstance(algorithmName, provider);
-                } else {
-                    secretKeyFactory = SecretKeyFactory.getInstance(algorithmName);
-                }
-                Cipher cipher;
-
-                if (provider != null) {
-                    cipher = Cipher.getInstance(algorithmName, provider);
-                } else {
-                    cipher = Cipher.getInstance(algorithmName);
-                }
-
+            String encryptedText = bufferedReader.readLine();
+            for (EncryptionAlgorithm encryptionAlgorithm : EncryptionAlgorithm.values()) {
+                final String algorithmName = encryptionAlgorithm.getAlgorithmName();
                 logger.log(Level.INFO, String.format("Trying %s algorithm for decryption", algorithmName));
-
-                final SecretKey secretKey = secretKeyFactory.generateSecret(pbeKeySpec);
-
-                cipher.init(Cipher.DECRYPT_MODE, secretKey, pbeParameterSpec);
-
-                byte[] in = new byte[64];
-                int read;
-                while ((read = fis.read(in)) != -1) {
-                    byte[] output = cipher.update(in, 0, read);
-                    if (output != null)
-                        fos.write(output);
+                StringEncryptor encryptor = getEncryptor(encryptionAlgorithm);
+                String decryptedText = null;
+                try {
+                    if (PropertyValueEncryptionUtils.isEncryptedValue(encryptedText)) {
+                        decryptedText = PropertyValueEncryptionUtils.decrypt(encryptedText, encryptor);
+                    }
+                    if (StringUtils.isNotBlank(decryptedText)) {
+                        bufferedWriter.write(decryptedText);
+                        bufferedWriter.flush();
+                        performCleanup();
+                        break;
+                    }
+                } catch (EncryptionOperationNotPossibleException | EncryptionInitializationException ex) { // NOSONAR - This exception only required in debug level.
+                    logger.log(Level.INFO, "Unable to decrypt using " + algorithmName);
+                    logger.log(Level.INFO, "Trying with next available algorithm");
                 }
-
-                byte[] output = cipher.doFinal();
-                if (output != null)
-                    fos.write(output);
-                fos.flush();
-                logger.log(Level.INFO, String.format("Decryption succeeded with %s algorithm ", algorithmName));
-                performCleanup();
-                break;
-            } catch (InvalidKeyException | InvalidKeySpecException | BadPaddingException | InvalidAlgorithmParameterException | IllegalBlockSizeException | IOException | NoSuchPaddingException | NoSuchAlgorithmException e) {
-                logger.log(Level.SEVERE, String.format("Decryption failed with %s algorithm ", algorithmName), e);
             }
+        } catch (IOException e) {
+            throw new EncryptionException("Error occurred in reading writing file", e);
         }
     }
 
@@ -217,5 +163,26 @@ public class EncryptionHelper {
             logger.log(Level.SEVERE, "Unable to determine encryption algorithm", e);
         }
         return encryptionAlgorithm;
+    }
+
+    private EnvironmentStringPBEConfig getConfig(EncryptionAlgorithm encryptionAlgorithm) {
+        EnvironmentStringPBEConfig environmentStringPBEConfig = new EnvironmentStringPBEConfig();
+        environmentStringPBEConfig.setKeyObtentionIterations(1000);
+        environmentStringPBEConfig.setAlgorithm(encryptionAlgorithm.getAlgorithmName());
+        if (encryptionAlgorithm.getProvider() != null) {
+            environmentStringPBEConfig.setProvider(encryptionAlgorithm.getProvider());
+        }
+        StringFixedSaltGenerator saltGenerator = new StringFixedSaltGenerator(salt);
+        environmentStringPBEConfig.setSaltGenerator(saltGenerator);
+        environmentStringPBEConfig.setPassword(password);
+        return environmentStringPBEConfig;
+    }
+
+    public StringEncryptor getEncryptor(EncryptionAlgorithm encryptionAlgorithm) {
+
+        PooledPBEStringEncryptor pooledPBEStringEncryptor = new PooledPBEStringEncryptor();
+        pooledPBEStringEncryptor.setPoolSize(10);
+        pooledPBEStringEncryptor.setConfig(getConfig(encryptionAlgorithm));
+        return pooledPBEStringEncryptor;
     }
 }
