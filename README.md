@@ -9,9 +9,7 @@ using [property file](src/main/resources/app.properties)
 
 The password and salt values can be configured in [property file](src/main/resources/app.properties)
 
-This application uses [Bouncy Castle Provider](https://www.bouncycastle.org/java.html) if unlimited policy is detected. In order to use [Bouncy Castle Provider](https://www.bouncycastle.org/java.html),
-it should be added in JDK. Please refer [this](http://www.bouncycastle.org/wiki/display/JA1/Provider+Installation) and [this](https://docs.oracle.com/cd/E19830-01/819-4712/ablsc/index.html) for 
-[Bouncy Castle Provider](https://www.bouncycastle.org/java.html) installation.
+
 ##### Running the application
 ###### Windows
 
