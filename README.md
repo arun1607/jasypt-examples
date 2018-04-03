@@ -16,16 +16,19 @@ it should be added in JDK. Please refer [this](http://www.bouncycastle.org/wiki/
 ###### Windows
 
 ```
-gradlew.bat clean shadowJar
-
-java -jar build\libs\encryption-sample-0.0.1-all.jar
-
+gradlew.bat clean assemble
 ```
+
+Go to `build\distributions` and unzip `encryption-sample-0.0.1.zip`
+
+Run `encryption-sample-0.0.1\bin\encryption-sample.bat`
+
 
 ###### Mac/Linux
 ```
-./gradlew clean shadowJar
-
-java -jar build/libs/encryption-sample-0.0.1-all.jar
+./gradlew clean assemble
 
 ```
+Go to `build/distributions` and unzip `encryption-sample-0.0.1.zip`
+
+Run `encryption-sample-0.0.1/bin/encryption-sample`
