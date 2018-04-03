@@ -105,28 +105,22 @@ public class EncryptionHelper {
 
     }
 
-    public void performDecryption() throws EncryptionException {
+    public void performDecryption() throws EncryptionException, IOException {
 
         try (
                 BufferedReader bufferedReader = new BufferedReader(new FileReader(targetFile));
                 BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(decryptedFile))
         ) {
 
-
             String encryptedText = bufferedReader.readLine();
+            String decryptedText = null;
             for (EncryptionAlgorithm encryptionAlgorithm : EncryptionAlgorithm.values()) {
                 final String algorithmName = encryptionAlgorithm.getAlgorithmName();
                 logger.log(Level.INFO, String.format("Trying %s algorithm for decryption", algorithmName));
                 StringEncryptor encryptor = getEncryptor(encryptionAlgorithm);
-                String decryptedText = null;
                 try {
                     if (PropertyValueEncryptionUtils.isEncryptedValue(encryptedText)) {
                         decryptedText = PropertyValueEncryptionUtils.decrypt(encryptedText, encryptor);
-                    }
-                    if (StringUtils.isNotBlank(decryptedText)) {
-                        bufferedWriter.write(decryptedText);
-                        bufferedWriter.flush();
-                        performCleanup();
                         break;
                     }
                 } catch (EncryptionOperationNotPossibleException | EncryptionInitializationException ex) { // NOSONAR - This exception only required in debug level.
@@ -134,9 +128,15 @@ public class EncryptionHelper {
                     logger.log(Level.INFO, "Trying with next available algorithm");
                 }
             }
+
+            if (StringUtils.isNotBlank(decryptedText)) {
+                bufferedWriter.write(decryptedText);
+                bufferedWriter.flush();
+            }
         } catch (IOException e) {
             throw new EncryptionException("Error occurred in reading writing file", e);
         }
+        performCleanup();
     }
 
     private void performCleanup() throws IOException {

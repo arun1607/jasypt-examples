@@ -1,11 +1,8 @@
 package com.app.learning;
 
 
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
-
 import java.io.IOException;
 import java.io.InputStream;
-import java.security.Security;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -13,9 +10,7 @@ import java.util.logging.Logger;
 public class Application {
     private static Logger logger = Logger.getLogger(Application.class.getName());
 
-    static {
-        Security.addProvider(new BouncyCastleProvider());
-    }
+
     public static void main(String[] args) throws EncryptionException {
 
         try (InputStream inputStream = Application.class.getResourceAsStream("/app.properties")) {
